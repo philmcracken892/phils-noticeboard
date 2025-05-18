@@ -8,7 +8,8 @@ Here’s how you can jump in and start using the Notice Board:
 
 Type /noticeboard in the chat, anywhere in the game.
 A menu will pop up with two options: Post New Notice and View Notices.
-added tom radial wheel 
+added to radial wheel if prefered
+
 2. Post a New Notice
 
 Choose Post New Notice from the menu.
