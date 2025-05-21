@@ -1,6 +1,8 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
+lib.locale()
 
 local Config = Config or { DatabaseName = "notices", MaxNoticesPerPlayer = 3 }
+
 if not Config then
     print("[phils-noticeboard] WARNING: Config not loaded, using fallback values")
 end
@@ -14,9 +16,9 @@ AddEventHandler("rsg:noticeBoard:openMenu", function()
     local src = source
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then return end
-    
+
     exports.oxmysql:execute([[
-        SELECT 
+        SELECT
             n.id, n.title, n.description, n.citizenid,
             DATE_FORMAT(n.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
             (SELECT charinfo FROM players WHERE citizenid = n.citizenid) AS author_info
@@ -27,7 +29,7 @@ AddEventHandler("rsg:noticeBoard:openMenu", function()
         local playerCitizenId = Player.PlayerData.citizenid
 
         for _, notice in ipairs(results) do
-            local authorName = "Unknown"
+            local authorName = locale('sv_lang_1')
             if notice.author_info then
                 local authorInfo = json.decode(notice.author_info)
                 authorName = authorInfo.firstname .. " " .. authorInfo.lastname
@@ -53,8 +55,8 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then
         TriggerClientEvent('ox_lib:notify', src, {
-            title = 'Error',
-            description = 'Player not found',
+            title = locale('sv_lang_2'),
+            description = locale('sv_lang_3'),
             type = 'error'
         })
         return
@@ -63,8 +65,8 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
     if data.action == "create" then
         if not data.title or data.title == "" or not data.description or data.description == "" then
             TriggerClientEvent('ox_lib:notify', src, {
-                title = 'Error',
-                description = 'Title and description are required',
+                title = locale('sv_lang_2'),
+                description = locale('sv_lang_4'),
                 type = 'error'
             })
             return
@@ -76,8 +78,8 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
             local noticeCount = result[1].count or 0
             if noticeCount >= Config.MaxNoticesPerPlayer then
                 TriggerClientEvent('ox_lib:notify', src, {
-                    title = 'Error',
-                    description = 'You have reached the maximum number of notices (' .. Config.MaxNoticesPerPlayer .. ').',
+                    title = locale('sv_lang_2'),
+                    description = locale('sv_lang_5') .. Config.MaxNoticesPerPlayer .. ').',
                     type = 'error'
                 })
                 return
@@ -91,14 +93,14 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
             }, function(result)
                 if wasSuccessful(result) then
                     TriggerClientEvent('ox_lib:notify', src, {
-                        title = 'Success',
-                        description = 'Notice posted successfully',
+                        title = locale('sv_lang_6'),
+                        description = locale('sv_lang_7'),
                         type = 'success'
                     })
                 else
                     TriggerClientEvent('ox_lib:notify', src, {
-                        title = 'Error',
-                        description = 'Failed to post notice',
+                        title = locale('sv_lang_2'),
+                        description = locale('sv_lang_8'),
                         type = 'error'
                     })
                 end
@@ -107,8 +109,8 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
     elseif data.action == "edit" then
         if not data.title or data.title == "" or not data.description or data.description == "" then
             TriggerClientEvent('ox_lib:notify', src, {
-                title = 'Error',
-                description = 'Title and description are required',
+                title = locale('sv_lang_2'),
+                description = locale('sv_lang_4'),
                 type = 'error'
             })
             return
@@ -117,8 +119,8 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
         exports.oxmysql:single('SELECT citizenid FROM ' .. Config.DatabaseName .. ' WHERE id = ?', {data.id}, function(notice)
             if not notice then
                 TriggerClientEvent('ox_lib:notify', src, {
-                    title = 'Error',
-                    description = 'Notice not found',
+                    title = locale('sv_lang_2'),
+                    description = locale('sv_lang_9'),
                     type = 'error'
                 })
                 return
@@ -126,8 +128,8 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
 
             if notice.citizenid ~= Player.PlayerData.citizenid then
                 TriggerClientEvent('ox_lib:notify', src, {
-                    title = 'Error',
-                    description = 'You can only edit your own notices',
+                    title = locale('sv_lang_2'),
+                    description = locale('sv_lang_10'),
                     type = 'error'
                 })
                 return
@@ -140,14 +142,14 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
             }, function(result)
                 if wasSuccessful(result) then
                     TriggerClientEvent('ox_lib:notify', src, {
-                        title = 'Success',
-                        description = 'Notice updated successfully',
+                        title = locale('sv_lang_6'),
+                        description = locale('sv_lang_11'),
                         type = 'success'
                     })
                 else
                     TriggerClientEvent('ox_lib:notify', src, {
-                        title = 'Error',
-                        description = 'Failed to update notice',
+                        title = locale('sv_lang_2'),
+                        description = locale('sv_lang_12'),
                         type = 'error'
                     })
                 end
@@ -162,8 +164,8 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(selection)
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then
         TriggerClientEvent('ox_lib:notify', src, {
-            title = 'Error',
-            description = 'Player not found',
+            title = locale('sv_lang_2'),
+            description = locale('sv_lang_3'),
             type = 'error'
         })
         return
@@ -173,8 +175,8 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(selection)
         exports.oxmysql:single('SELECT citizenid FROM ' .. Config.DatabaseName .. ' WHERE id = ?', {selection.id}, function(notice)
             if not notice then
                 TriggerClientEvent('ox_lib:notify', src, {
-                    title = 'Error',
-                    description = 'Notice not found',
+                    title = locale('sv_lang_2'),
+                    description = locale('sv_lang_9'),
                     type = 'error'
                 })
                 return
@@ -182,8 +184,8 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(selection)
 
             if notice.citizenid ~= Player.PlayerData.citizenid then
                 TriggerClientEvent('ox_lib:notify', src, {
-                    title = 'Error',
-                    description = 'You can only delete your own notices',
+                    title = locale('sv_lang_2'),
+                    description = locale('sv_lang_13'),
                     type = 'error'
                 })
                 return
@@ -194,14 +196,14 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(selection)
             }, function(result)
                 if wasSuccessful(result) then
                     TriggerClientEvent('ox_lib:notify', src, {
-                        title = 'Success',
-                        description = 'Notice deleted successfully',
+                        title = locale('sv_lang_6'),
+                        description = locale('sv_lang_14'),
                         type = 'success'
                     })
                 else
                     TriggerClientEvent('ox_lib:notify', src, {
-                        title = 'Error',
-                        description = 'Failed to delete notice',
+                        title = locale('sv_lang_2'),
+                        description = locale('sv_lang_15'),
                         type = 'error'
                     })
                 end
@@ -214,8 +216,8 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(selection)
             local noticeCount = result[1].count or 0
             if noticeCount == 0 then
                 TriggerClientEvent('ox_lib:notify', src, {
-                    title = 'Error',
-                    description = 'You have no notices to delete',
+                    title = locale('sv_lang_2'),
+                    description = locale('sv_lang_16'),
                     type = 'error'
                 })
                 return
@@ -226,14 +228,14 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(selection)
             }, function(result)
                 if wasSuccessful(result) then
                     TriggerClientEvent('ox_lib:notify', src, {
-                        title = 'Success',
-                        description = 'All your notices have been deleted successfully',
+                        title = locale('sv_lang_6'),
+                        description = locale('sv_lang_17'),
                         type = 'success'
                     })
                 else
                     TriggerClientEvent('ox_lib:notify', src, {
-                        title = 'Error',
-                        description = 'Failed to delete all notices',
+                        title = locale('sv_lang_2'),
+                        description = locale('sv_lang_18'),
                         type = 'error'
                     })
                 end
