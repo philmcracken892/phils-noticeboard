@@ -1,4 +1,5 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
+lib.locale()
 
 local function formatDateTime(datetime)
     if type(datetime) == "number" then
@@ -7,7 +8,7 @@ local function formatDateTime(datetime)
 
     local date, time = datetime:match("(%d+%-%d+%-%d+) (%d+:%d+:%d+)")
     if not date or not time then
-        return datetime 
+        return datetime
     end
 
     local year, month, day = date:match("(%d+)%-(%d+)%-(%d+)")
@@ -16,7 +17,7 @@ local function formatDateTime(datetime)
     local hour, minute = time:match("(%d+):(%d+):%d+")
     hour, minute = tonumber(hour), tonumber(minute)
 
-    local period = hour >= 12 and "PM" or "AM"
+    local period = hour >= 12 and locale('cl_lang_1') or locale('cl_lang_2')
     hour = hour % 12
     if hour == 0 then hour = 12 end
 
@@ -31,15 +32,15 @@ RegisterNetEvent("rsg:noticeBoard:openMenu")
 AddEventHandler("rsg:noticeBoard:openMenu", function(notices)
     local options = {
         {
-            title = 'Post New Notice',
-            description = 'Create a new notice for the board',
+            title = locale('cl_lang_3'),
+            description = locale('cl_lang_4'),
             onSelect = function()
                 TriggerEvent('rsg:noticeBoard:createNotice')
             end
         },
         {
-            title = 'View Notices',
-            description = 'Browse all notices on the board',
+            title = locale('cl_lang_5'),
+            description = locale('cl_lang_6'),
             onSelect = function()
                 TriggerEvent('rsg:noticeBoard:viewNotices', notices)
             end
@@ -48,7 +49,7 @@ AddEventHandler("rsg:noticeBoard:openMenu", function(notices)
 
     lib.registerContext({
         id = 'notice_main_menu',
-        title = 'Notice Board',
+        title = locale('cl_lang_7'),
         options = options
     })
 
@@ -57,16 +58,16 @@ end)
 
 RegisterNetEvent("rsg:noticeBoard:createNotice")
 AddEventHandler("rsg:noticeBoard:createNotice", function()
-    local input = lib.inputDialog('Post Notice', {
+    local input = lib.inputDialog(locale('cl_lang_8'), {
         {
             type = 'input',
-            label = 'Title',
+            label = locale('cl_lang_9'),
             required = true,
             max = 50
         },
         {
             type = 'textarea',
-            label = 'Description',
+            label = locale('cl_lang_10'),
             required = true,
             max = 500
         }
@@ -89,9 +90,11 @@ AddEventHandler("rsg:noticeBoard:viewNotices", function(notices)
     for _, notice in ipairs(notices) do
         local formattedDateTime = formatDateTime(notice.created_at)
         local description = string.format(
-            "%s\nPosted by: %s\nPosted on: %s",
+            "%s\n%s: %s\n%s: %s",
             notice.description,
+            locale('cl_lang_11'),
             notice.authorName,
+            locale('cl_lang_12'),
             formattedDateTime
         )
 
@@ -112,7 +115,7 @@ AddEventHandler("rsg:noticeBoard:viewNotices", function(notices)
 
     lib.registerContext({
         id = 'notice_listings',
-        title = 'Notice Board',
+        title = locale('cl_lang_7'),
         options = options
     })
 
@@ -123,22 +126,22 @@ RegisterNetEvent("rsg:noticeBoard:handleNoticeAction")
 AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(notice)
     local options = {
         {
-            title = 'Edit Notice',
-            description = 'Modify the title or description of this notice',
+            title = locale('cl_lang_13'),
+            description = locale('cl_lang_14'),
             onSelect = function()
                 TriggerEvent('rsg:noticeBoard:editNotice', notice)
             end
         },
         {
-            title = 'Delete Notice',
-            description = 'Permanently delete this notice from the board',
+            title = locale('cl_lang_15'),
+            description = locale('cl_lang_16'),
             onSelect = function()
                 TriggerEvent('rsg:noticeBoard:removeNotice', notice)
             end
         },
         {
-            title = 'Delete All Notices',
-            description = 'Permanently delete all your notices from the board',
+            title = locale('cl_lang_17'),
+            description = locale('cl_lang_18'),
             onSelect = function()
                 TriggerEvent('rsg:noticeBoard:removeAllNotices')
             end
@@ -147,7 +150,7 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(notice)
 
     lib.registerContext({
         id = 'notice_actions',
-        title = 'Notice Actions',
+        title = locale('cl_lang_19'),
         menu = 'notice_listings',
         options = options
     })
@@ -157,17 +160,17 @@ end)
 
 RegisterNetEvent("rsg:noticeBoard:editNotice")
 AddEventHandler("rsg:noticeBoard:editNotice", function(notice)
-    local input = lib.inputDialog('Edit Notice', {
+    local input = lib.inputDialog(locale('cl_lang_20'), {
         {
             type = 'input',
-            label = 'Title',
+            label = locale('cl_lang_9'),
             required = true,
             max = 50,
             default = notice.title
         },
         {
             type = 'textarea',
-            label = 'Description',
+            label = locale('cl_lang_10'),
             required = true,
             max = 500,
             default = notice.description
@@ -187,8 +190,8 @@ end)
 RegisterNetEvent("rsg:noticeBoard:removeNotice")
 AddEventHandler("rsg:noticeBoard:removeNotice", function(notice)
     local alert = lib.alertDialog({
-        header = 'Delete Notice',
-        content = 'Are you sure you want to permanently delete this notice?',
+        header = locale('cl_lang_15'),
+        content = locale('cl_lang_21'),
         centered = true,
         cancel = true
     })
@@ -204,8 +207,8 @@ end)
 RegisterNetEvent("rsg:noticeBoard:removeAllNotices")
 AddEventHandler("rsg:noticeBoard:removeAllNotices", function()
     local alert = lib.alertDialog({
-        header = 'Delete All Notices',
-        content = 'Are you sure you want to permanently delete all your notices?',
+        header = locale('cl_lang_17'),
+        content = locale('cl_lang_22'),
         centered = true,
         cancel = true
     })
