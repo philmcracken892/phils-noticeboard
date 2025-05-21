@@ -1,11 +1,9 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
 
-
 local Config = Config or { DatabaseName = "notices", MaxNoticesPerPlayer = 3 }
 if not Config then
     print("[phils-noticeboard] WARNING: Config not loaded, using fallback values")
 end
-
 
 local function wasSuccessful(result)
     return result and (type(result) == "table" and result.affectedRows and result.affectedRows > 0) or (type(result) == "number" and result > 0)
@@ -72,7 +70,6 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
             return
         end
 
-        
         exports.oxmysql:execute('SELECT COUNT(*) as count FROM ' .. Config.DatabaseName .. ' WHERE citizenid = ?', {
             Player.PlayerData.citizenid
         }, function(result)
@@ -102,6 +99,55 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
                     TriggerClientEvent('ox_lib:notify', src, {
                         title = 'Error',
                         description = 'Failed to post notice',
+                        type = 'error'
+                    })
+                end
+            end)
+        end)
+    elseif data.action == "edit" then
+        if not data.title or data.title == "" or not data.description or data.description == "" then
+            TriggerClientEvent('ox_lib:notify', src, {
+                title = 'Error',
+                description = 'Title and description are required',
+                type = 'error'
+            })
+            return
+        end
+
+        exports.oxmysql:single('SELECT citizenid FROM ' .. Config.DatabaseName .. ' WHERE id = ?', {data.id}, function(notice)
+            if not notice then
+                TriggerClientEvent('ox_lib:notify', src, {
+                    title = 'Error',
+                    description = 'Notice not found',
+                    type = 'error'
+                })
+                return
+            end
+
+            if notice.citizenid ~= Player.PlayerData.citizenid then
+                TriggerClientEvent('ox_lib:notify', src, {
+                    title = 'Error',
+                    description = 'You can only edit your own notices',
+                    type = 'error'
+                })
+                return
+            end
+
+            exports.oxmysql:execute('UPDATE ' .. Config.DatabaseName .. ' SET title = ?, description = ? WHERE id = ?', {
+                data.title,
+                data.description,
+                data.id
+            }, function(result)
+                if wasSuccessful(result) then
+                    TriggerClientEvent('ox_lib:notify', src, {
+                        title = 'Success',
+                        description = 'Notice updated successfully',
+                        type = 'success'
+                    })
+                else
+                    TriggerClientEvent('ox_lib:notify', src, {
+                        title = 'Error',
+                        description = 'Failed to update notice',
                         type = 'error'
                     })
                 end
