@@ -1,32 +1,25 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
 
-
 local function formatDateTime(datetime)
-    
     if type(datetime) == "number" then
         datetime = os.date("%Y-%m-%d %H:%M:%S", datetime)
     end
 
-    
     local date, time = datetime:match("(%d+%-%d+%-%d+) (%d+:%d+:%d+)")
     if not date or not time then
         return datetime 
     end
 
-   
     local year, month, day = date:match("(%d+)%-(%d+)%-(%d+)")
     month, day, year = tonumber(month), tonumber(day), tonumber(year)
 
-   
     local hour, minute = time:match("(%d+):(%d+):%d+")
     hour, minute = tonumber(hour), tonumber(minute)
 
-   
     local period = hour >= 12 and "PM" or "AM"
     hour = hour % 12
     if hour == 0 then hour = 12 end
 
-    
     return string.format("%02d/%02d/%04d %02d:%02d %s", month, day, year, hour, minute, period)
 end
 
@@ -107,7 +100,6 @@ AddEventHandler("rsg:noticeBoard:viewNotices", function(notices)
             description = description
         }
 
-        
         if notice.isCreator then
             hasNotices = true
             option.onSelect = function()
@@ -130,6 +122,13 @@ end)
 RegisterNetEvent("rsg:noticeBoard:handleNoticeAction")
 AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(notice)
     local options = {
+        {
+            title = 'Edit Notice',
+            description = 'Modify the title or description of this notice',
+            onSelect = function()
+                TriggerEvent('rsg:noticeBoard:editNotice', notice)
+            end
+        },
         {
             title = 'Delete Notice',
             description = 'Permanently delete this notice from the board',
@@ -154,6 +153,35 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(notice)
     })
 
     lib.showContext('notice_actions')
+end)
+
+RegisterNetEvent("rsg:noticeBoard:editNotice")
+AddEventHandler("rsg:noticeBoard:editNotice", function(notice)
+    local input = lib.inputDialog('Edit Notice', {
+        {
+            type = 'input',
+            label = 'Title',
+            required = true,
+            max = 50,
+            default = notice.title
+        },
+        {
+            type = 'textarea',
+            label = 'Description',
+            required = true,
+            max = 500,
+            default = notice.description
+        }
+    })
+
+    if input then
+        TriggerServerEvent("rsg:noticeBoard:handleMenuSelection", {
+            action = "edit",
+            id = notice.id,
+            title = input[1],
+            description = input[2]
+        })
+    end
 end)
 
 RegisterNetEvent("rsg:noticeBoard:removeNotice")
