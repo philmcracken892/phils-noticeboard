@@ -1,0 +1,257 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Notice Board</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --bg:#0e0e0e; --panel:#1b1b1b; --muted:#bdbdbd; --text:#f0f0f0; --acc:#d3aa6e; }
+    * { box-sizing:border-box; font-family:system-ui,Segoe UI,Roboto,Ubuntu; }
+    body { margin:0; background:none; color:var(--text); transition: background 0.3s ease; }
+    .wrap { display:flex; gap:16px; padding:18px; height:100vh; }
+    .left { width:360px; background:var(--panel); border:1px solid #222; border-radius:10px; padding:14px; }
+    .right { flex:1; background:var(--panel); border:1px solid #222; border-radius:10px; padding:14px; overflow:auto; }
+    h1 { margin:6px 0 12px; font-size:20px; letter-spacing:.5px; }
+    .muted { color:var(--muted); font-size:12px; }
+    .btn { background:var(--acc); color:#111; border:none; padding:10px 12px; border-radius:8px; cursor:pointer; transition:all 0.2s ease; }
+    .btn:hover { opacity:0.9; transform:translateY(-1px); }
+    .btn.secondary { background:#333; color:#ddd; }
+    .btn.danger { background:#5a1a1a; color:#ff9d9d; }
+    .stack { display:flex; flex-direction:column; gap:8px; }
+    label { font-size:12px; color:var(--muted); margin-top:6px; }
+    input, textarea { width:100%; background:#111; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; transition:border 0.2s ease; }
+    input:focus, textarea:focus { border-color:var(--acc); outline:none; }
+    textarea { min-height:100px; resize:vertical; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:12px; }
+    .card { background:#121212; border:1px solid #2a2a2a; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px; transition:transform 0.2s ease; }
+    .card:hover { transform:translateY(-2px); }
+    .card h3 { margin:0; font-size:16px; }
+    .meta { font-size:12px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; }
+    .card .actions { margin-top:8px; display:flex; gap:8px; }
+    a.link { color:#8ec7ff; text-decoration:none; transition:color 0.2s ease; }
+    a.link:hover { color:#6ab0ff; text-decoration:underline; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .notice-img { max-width:100%; max-height:200px; object-fit:contain; margin-top:6px; border-radius:6px; border:1px solid #333; }
+    .img-container { position:relative; }
+    .img-placeholder { background:#111; border:1px dashed #333; border-radius:6px; padding:20px; text-align:center; color:var(--muted); }
+    .loading-spinner { display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; }
+    .loading-spinner.active { display:flex; }
+    .spinner { width:24px; height:24px; border:3px solid rgba(255,255,255,0.3); border-radius:50%; border-top-color:#fff; animation:spin 1s ease-in-out infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .confirmation-dialog { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center; }
+    .confirmation-dialog.active { display:flex; }
+    .dialog-content { background:var(--panel); padding:20px; border-radius:10px; max-width:400px; width:100%; }
+    .dialog-buttons { display:flex; gap:10px; margin-top:20px; justify-content:flex-end; }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app" style="display:none">
+    <div class="left">
+      <div class="topbar">
+        <h1>Notice Board</h1>
+        <button class="btn secondary" id="closeBtn">Close</button>
+      </div>
+      <div class="stack">
+        <label>Title</label>
+        <input id="title" maxlength="50" placeholder="Short title" />
+        <label>Description</label>
+        <textarea id="description" maxlength="500" placeholder="Write your notice..."></textarea>
+        <label>Image URL (optional)</label>
+        <input id="url" maxlength="255" placeholder="https://i.imgur.com/..." />
+        <div id="imagePreview" class="img-container" style="display:none;">
+          <div class="img-placeholder">Image Preview</div>
+          <img id="previewImage" class="notice-img" style="display:none;">
+          <div class="loading-spinner"><div class="spinner"></div></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="btn" id="createBtn">Post Notice</button>
+          <button class="btn secondary" id="clearBtn">Clear</button>
+          <button class="btn danger" id="deleteAllBtn">Delete All</button>
+        </div>
+        <p class="muted">Only you can edit/delete your own notices. Supports common image hosting sites.</p>
+      </div>
+    </div>
+    <div class="right">
+      <div class="grid" id="list"></div>
+    </div>
+  </div>
+
+  <!-- Confirmation Dialog -->
+  <div class="confirmation-dialog" id="confirmDialog">
+    <div class="dialog-content">
+      <h3 id="dialogMessage">Are you sure you want to delete all notices?</h3>
+      <div class="dialog-buttons">
+        <button class="btn secondary" id="cancelBtn">Cancel</button>
+        <button class="btn danger" id="confirmBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const app = document.getElementById('app');
+    const list = document.getElementById('list');
+    const title = document.getElementById('title');
+    const desc = document.getElementById('description');
+    const url = document.getElementById('url');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewImage = document.getElementById('previewImage');
+    const confirmDialog = document.getElementById('confirmDialog');
+    const dialogMessage = document.getElementById('dialogMessage');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+
+    let currentNoticeId = null;
+
+    const fetchNui = (name, data={}) => fetch(`https://${GetParentResourceName()}/${name}`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+    });
+
+    const escapeHtml = (s='') =>
+      s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    const linkify = (text='') =>
+      escapeHtml(text).replace(/https?:\/\/\S+/g, m => `<a class="link" href="${m}" target="_blank" rel="noopener noreferrer">${m}</a>`);
+
+    const isImageUrl = (u) =>
+      u && (/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(u) ||
+            /(cdn\.discordapp\.com|media\.discordapp\.net|i\.imgur\.com|i\.redd\.it)/i.test(u));
+
+    function showImagePreview(url) {
+      if (!isImageUrl(url)) {
+        imagePreview.style.display = 'none';
+        return;
+      }
+      imagePreview.style.display = 'block';
+      const placeholder = imagePreview.querySelector('.img-placeholder');
+      const spinner = imagePreview.querySelector('.loading-spinner');
+      placeholder.style.display = 'none';
+      previewImage.style.display = 'none';
+      spinner.classList.add('active');
+      previewImage.onload = () => {
+        spinner.classList.remove('active');
+        previewImage.style.display = 'block';
+      };
+      previewImage.onerror = () => {
+        spinner.classList.remove('active');
+        previewImage.style.display = 'none';
+        placeholder.style.display = 'block';
+        placeholder.textContent = 'Image failed to load';
+      };
+      previewImage.src = url;
+    }
+
+    function renderCard(n) {
+      const mediaHtml = n.url
+        ? (n.isImage
+          ? `<div class="img-container">
+               <img src="${n.url}" alt="notice image" class="notice-img" 
+                    onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+               <div class="img-placeholder" style="display:none;">Image unavailable</div>
+             </div>`
+          : `<div><a class="link" href="${n.url}" target="_blank">${n.url}</a></div>`)
+        : '';
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.id = n.id;
+      card.innerHTML = `
+        <h3>${escapeHtml(n.title)}</h3>
+        <div class="meta">
+          <span>by ${escapeHtml(n.authorName || 'Unknown')}</span>
+          <span>on ${escapeHtml(n.created_at || '')}</span>
+        </div>
+        <div class="body">${linkify(n.description || '')}</div>
+        ${mediaHtml}
+        ${n.isCreator
+          ? `<div class="actions">
+               <button class="btn secondary edit">Edit</button>
+               <button class="btn danger del">Delete</button>
+             </div>`
+          : ''}`;
+      if (n.isCreator) {
+        card.querySelector('.edit').onclick = () => {
+          title.value = n.title || '';
+          desc.value = n.description || '';
+          url.value = n.url || '';
+          showImagePreview(n.url);
+          currentNoticeId = n.id;
+        };
+        card.querySelector('.del').onclick = () => {
+          showConfirmation('Are you sure you want to delete this notice?', () => {
+            fetchNui('deleteNotice', { id: n.id });
+          });
+        };
+      }
+      return card;
+    }
+
+    function render(notices=[]) {
+      list.innerHTML = '';
+      notices.forEach(n => list.appendChild(renderCard(n)));
+    }
+
+    function showConfirmation(message, callback) {
+      dialogMessage.textContent = message;
+      confirmDialog.classList.add('active');
+      const handleConfirm = () => {
+        confirmDialog.classList.remove('active');
+        callback();
+        cleanup();
+      };
+      const handleCancel = () => {
+        confirmDialog.classList.remove('active');
+        cleanup();
+      };
+      const cleanup = () => {
+        confirmBtn.removeEventListener('click', handleConfirm);
+        cancelBtn.removeEventListener('click', handleCancel);
+      };
+      confirmBtn.addEventListener('click', handleConfirm);
+      cancelBtn.addEventListener('click', handleCancel);
+    }
+
+    // Listen for messages from Lua
+    window.addEventListener('message', (e) => {
+      const d = e.data || {};
+      if (d.action === 'open') {
+        document.body.style.background = 'rgba(0,0,0,.35)';
+        app.style.display = 'flex';
+        render(d.notices || []);
+      } else if (d.action === 'hide') {
+        document.body.style.background = 'none';
+        app.style.display = 'none';
+      }
+    });
+
+    url.addEventListener('input', () => showImagePreview(url.value));
+    document.getElementById('closeBtn').onclick = () => fetchNui('close');
+    document.getElementById('clearBtn').onclick = () => {
+      title.value = '';
+      desc.value = '';
+      url.value = '';
+      imagePreview.style.display = 'none';
+      currentNoticeId = null;
+    };
+    document.getElementById('createBtn').onclick = () => {
+      if (!title.value.trim() || !desc.value.trim()) return;
+      const data = { title: title.value, description: desc.value, url: url.value };
+      if (currentNoticeId) {
+        data.id = currentNoticeId;
+        fetchNui('editNotice', data);
+      } else {
+        fetchNui('createNotice', data);
+      }
+      title.value = '';
+      desc.value = '';
+      url.value = '';
+      imagePreview.style.display = 'none';
+      currentNoticeId = null;
+    };
+    document.getElementById('deleteAllBtn').onclick = () => {
+      showConfirmation('Are you sure you want to delete ALL your notices? This cannot be undone.', () => {
+        fetchNui('deleteAll');
+      });
+    };
+  </script>
+</body>
+</html>
