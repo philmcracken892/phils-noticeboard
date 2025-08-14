@@ -4,81 +4,342 @@
   <meta charset="utf-8" />
   <title>Notice Board</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+DW+Pica:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    :root { --bg:#0e0e0e; --panel:#1b1b1b; --muted:#bdbdbd; --text:#f0f0f0; --acc:#d3aa6e; }
-    * { box-sizing:border-box; font-family:system-ui,Segoe UI,Roboto,Ubuntu; }
-    body { margin:0; background:none; color:var(--text); transition: background 0.3s ease; }
-    .wrap { display:flex; gap:16px; padding:18px; height:100vh; }
-    .left { width:360px; background:var(--panel); border:1px solid #222; border-radius:10px; padding:14px; }
-    .right { flex:1; background:var(--panel); border:1px solid #222; border-radius:10px; padding:14px; overflow:auto; }
-    h1 { margin:6px 0 12px; font-size:20px; letter-spacing:.5px; }
-    .muted { color:var(--muted); font-size:12px; }
-    .btn { background:var(--acc); color:#111; border:none; padding:10px 12px; border-radius:8px; cursor:pointer; transition:all 0.2s ease; }
-    .btn:hover { opacity:0.9; transform:translateY(-1px); }
-    .btn.secondary { background:#333; color:#ddd; }
-    .btn.danger { background:#5a1a1a; color:#ff9d9d; }
-    .stack { display:flex; flex-direction:column; gap:8px; }
-    label { font-size:12px; color:var(--muted); margin-top:6px; }
-    input, textarea { width:100%; background:#111; color:#fff; border:1px solid #333; border-radius:8px; padding:10px; transition:border 0.2s ease; }
-    input:focus, textarea:focus { border-color:var(--acc); outline:none; }
-    textarea { min-height:100px; resize:vertical; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:12px; }
-    .card { background:#121212; border:1px solid #2a2a2a; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px; transition:transform 0.2s ease; }
-    .card:hover { transform:translateY(-2px); }
-    .card h3 { margin:0; font-size:16px; }
-    .meta { font-size:12px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; }
-    .card .actions { margin-top:8px; display:flex; gap:8px; }
-    a.link { color:#8ec7ff; text-decoration:none; transition:color 0.2s ease; }
-    a.link:hover { color:#6ab0ff; text-decoration:underline; }
-    .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-    .notice-img { max-width:100%; max-height:200px; object-fit:contain; margin-top:6px; border-radius:6px; border:1px solid #333; }
-    .img-container { position:relative; }
-    .img-placeholder { background:#111; border:1px dashed #333; border-radius:6px; padding:20px; text-align:center; color:var(--muted); }
-    .loading-spinner { display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; }
-    .loading-spinner.active { display:flex; }
-    .spinner { width:24px; height:24px; border:3px solid rgba(255,255,255,0.3); border-radius:50%; border-top-color:#fff; animation:spin 1s ease-in-out infinite; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    .confirmation-dialog { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center; }
-    .confirmation-dialog.active { display:flex; }
-    .dialog-content { background:var(--panel); padding:20px; border-radius:10px; max-width:400px; width:100%; }
-    .dialog-buttons { display:flex; gap:10px; margin-top:20px; justify-content:flex-end; }
+    :root {
+      --bg: #1a1a1a; /* Dark gray for wood-like background */
+      --panel: #e0e0e0; /* Light gray for parchment-like panel */
+      --muted: #666666; /* Medium gray for secondary text */
+      --text: #333333; /* Dark gray text for readability */
+      --acc: #888888; /* Mid-gray for accents */
+      --border: #555555; /* Dark gray for borders */
+      --header-bg: #555555; /* Gray for section header background */
+      --header-text: #f0f0f0; /* Light gray for section header text */
+      --fancy-heading-bg: #444444; /* Slightly darker gray for fancy heading */
+      --fancy-heading-text: #ffffff; /* White for fancy heading text */
+    }
+    * {
+      box-sizing: border-box;
+      font-family: 'IM Fell DW Pica', serif;
+    }
+    body {
+      margin: 0;
+      background: none;
+      color: var(--text);
+      transition: background 0.3s ease;
+    }
+    .wrap {
+      display: flex;
+      gap: 16px;
+      padding: 18px;
+      height: 100vh;
+      background: linear-gradient(to bottom, rgba(26, 26, 26, 0.8), rgba(26, 26, 26, 1)); /* Gray wood-like gradient */
+      flex-direction: column;
+    }
+    .fancy-heading {
+      background: var(--fancy-heading-bg);
+      color: var(--fancy-heading-text);
+      padding: 12px;
+      margin: 0 0 16px;
+      border: 3px double var(--border);
+      border-radius: 10px;
+      font-size: 28px;
+      font-weight: 700;
+      text-transform: uppercase;
+      text-align: center;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+      position: relative;
+      /* Pseudo-elements for decorative flourishes */
+    }
+    .fancy-heading::before,
+    .fancy-heading::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 20px;
+      height: 2px;
+      background: var(--border);
+      transform: translateY(-50%);
+    }
+    .fancy-heading::before {
+      left: 10px;
+    }
+    .fancy-heading::after {
+      right: 10px;
+    }
+    .panels {
+      display: flex;
+      gap: 16px;
+      flex: 1;
+    }
+    .left {
+      width: 360px;
+      background: var(--panel);
+      border: 2px double var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+    }
+    .right {
+      flex: 1;
+      background: var(--panel);
+      border: 2px double var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      overflow: auto;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+    }
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 8px 12px;
+      margin: -14px -14px 12px;
+      border-bottom: 2px double var(--border);
+      font-size: 22px;
+      font-weight: 700;
+      text-transform: uppercase;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+      border-radius: 8px 8px 0 0;
+    }
+    h1 {
+      margin: 6px 0 12px;
+      font-size: 20px;
+      letter-spacing: 0.5px;
+      color: var(--acc);
+      text-transform: uppercase;
+    }
+    .muted {
+      color: var(--muted);
+      font-size: 12px;
+      font-style: italic;
+    }
+    .btn {
+      background: var(--acc);
+      color: #fff;
+      border: 2px solid var(--border);
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 700;
+      text-transform: uppercase;
+      box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+    }
+    .btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+    }
+    .btn.secondary {
+      background: #666666;
+      color: #e0e0e0;
+    }
+    .btn.danger {
+      background: #333333;
+      color: #cccccc;
+    }
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      font-weight: 700;
+    }
+    input, textarea {
+      width: 100%;
+      background: #f0f0f0;
+      color: var(--text);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      transition: border 0.2s ease;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--acc);
+      outline: none;
+      box-shadow: 0 0 5px rgba(136, 136, 136, 0.5);
+    }
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: #f0f0f0;
+      border: 2px double var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: transform 0.2s ease;
+      box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.3);
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+    }
+    .card h3 {
+      margin: 0;
+      font-size: 16px;
+      color: var(--acc);
+      font-weight: 700;
+    }
+    .meta {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-style: italic;
+    }
+    .card .actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+    }
+    a.link {
+      color: #888888;
+      text-decoration: underline;
+      transition: color 0.2s ease;
+    }
+    a.link:hover {
+      color: #aaaaaa;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .notice-img {
+      max-width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+      margin-top: 6px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+    }
+    .img-container {
+      position: relative;
+    }
+    .img-placeholder {
+      background: #f0f0f0;
+      border: 2px dashed var(--border);
+      border-radius: 6px;
+      padding: 20px;
+      text-align: center;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .loading-spinner {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .loading-spinner.active {
+      display: flex;
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .confirmation-dialog {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .confirmation-dialog.active {
+      display: flex;
+    }
+    .dialog-content {
+      background: var(--panel);
+      padding: 20px;
+      border: 2px double var(--border);
+      border-radius: 10px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
+    }
+    .dialog-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: flex-end;
+    }
   </style>
 </head>
 <body>
   <div class="wrap" id="app" style="display:none">
-    <div class="left">
-      <div class="topbar">
-        <h1>Notice Board</h1>
-        <button class="btn secondary" id="closeBtn">Close</button>
-      </div>
-      <div class="stack">
-        <label>Title</label>
-        <input id="title" maxlength="50" placeholder="Short title" />
-        <label>Description</label>
-        <textarea id="description" maxlength="500" placeholder="Write your notice..."></textarea>
-        <label>Image URL (optional)</label>
-        <input id="url" maxlength="255" placeholder="https://i.imgur.com/..." />
-        <div id="imagePreview" class="img-container" style="display:none;">
-          <div class="img-placeholder">Image Preview</div>
-          <img id="previewImage" class="notice-img" style="display:none;">
-          <div class="loading-spinner"><div class="spinner"></div></div>
+    <div class="fancy-heading">Notice Board</div>
+    <div class="panels">
+      <div class="left">
+        <div class="header">Create Notice</div>
+        <div class="topbar">
+          <h1>Notice Board</h1>
+          <button class="btn secondary" id="closeBtn">Close</button>
         </div>
-        <div style="display:flex; gap:8px; margin-top:10px;">
-          <button class="btn" id="createBtn">Post Notice</button>
-          <button class="btn secondary" id="clearBtn">Clear</button>
-          <button class="btn danger" id="deleteAllBtn">Delete All</button>
+        <div class="stack">
+          <label>Title</label>
+          <input id="title" maxlength="50" placeholder="Short title" />
+          <label>Description</label>
+          <textarea id="description" maxlength="500" placeholder="Write your notice..."></textarea>
+          <label>Image URL (optional)</label>
+          <input id="url" maxlength="255" placeholder="https://i.imgur.com/..." />
+          <div id="imagePreview" class="img-container" style="display:none;">
+            <div class="img-placeholder">Image Preview</div>
+            <img id="previewImage" class="notice-img" style="display:none;">
+            <div class="loading-spinner"><div class="spinner"></div></div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <button class="btn" id="createBtn">Post Notice</button>
+            <button class="btn secondary" id="clearBtn">Clear</button>
+            <button class="btn danger" id="deleteAllBtn">Delete All</button>
+          </div>
+          <p class="muted">Only you can edit/delete your own notices. Supports common image hosting sites.</p>
         </div>
-        <p class="muted">Only you can edit/delete your own notices. Supports common image hosting sites.</p>
       </div>
-    </div>
-    <div class="right">
-      <div class="grid" id="list"></div>
+      <div class="right">
+        <div class="header">Notices</div>
+        <div class="grid" id="list"></div>
+      </div>
     </div>
   </div>
 
   <!-- Confirmation Dialog -->
   <div class="confirmation-dialog" id="confirmDialog">
     <div class="dialog-content">
+      <div class="header">Confirm Action</div>
       <h3 id="dialogMessage">Are you sure you want to delete all notices?</h3>
       <div class="dialog-buttons">
         <button class="btn secondary" id="cancelBtn">Cancel</button>
@@ -210,7 +471,6 @@
       cancelBtn.addEventListener('click', handleCancel);
     }
 
-    // Listen for messages from Lua
     window.addEventListener('message', (e) => {
       const d = e.data || {};
       if (d.action === 'open') {
