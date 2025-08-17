@@ -27,16 +27,7 @@ function IsValidImageURL(url)
 end
 
 
-local noticeboardLocations = {
-    { coords = vector3(-767.25, -1260.67, 43.53), radius = 1.5 }, -- blackwater
-    { coords = vector3(2514.56, -1321.13, 48.50), radius = 1.5 }, -- st denis
-    { coords = vector3(1353.46, -1304.15, 76.86), radius = 1.5 }, -- rhodes
-	{ coords = vector3(-271.91, 804.73, 119.36), radius = 1.5 }, -- valentine
-    -- Add more locations as needed
-}
-
-
-for _, location in ipairs(noticeboardLocations) do
+for _, location in ipairs(Config.noticeboardLocations) do
     exports.ox_target:addSphereZone({
         coords = location.coords,
         radius = location.radius,
