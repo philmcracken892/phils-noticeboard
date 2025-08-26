@@ -7,16 +7,16 @@
   <link href="https://fonts.googleapis.com/css2?family=IM+Fell+DW+Pica:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #1a1a1a; /* Dark gray for wood-like background */
-      --panel: #e0e0e0; /* Light gray for parchment-like panel */
-      --muted: #666666; /* Medium gray for secondary text */
-      --text: #333333; /* Dark gray text for readability */
-      --acc: #888888; /* Mid-gray for accents */
-      --border: #555555; /* Dark gray for borders */
-      --header-bg: #555555; /* Gray for section header background */
-      --header-text: #f0f0f0; /* Light gray for section header text */
-      --fancy-heading-bg: #444444; /* Slightly darker gray for fancy heading */
-      --fancy-heading-text: #ffffff; /* White for fancy heading text */
+      --bg: #3c2f2f; /* Dark brown for wood-like background */
+      --panel: #f5e6c3; /* Light beige for parchment-like panel */
+      --muted: #5c4033; /* Muted brown for secondary text */
+      --text: #2c1e14; /* Dark brown text for readability */
+      --acc: #8b5a2b; /* Warm wood accent color */
+      --border: #4a3726; /* Darker brown for borders */
+      --header-bg: #6b4e31; /* Medium brown for section header background */
+      --header-text: #f5e6c3; /* Light beige for section header text */
+      --fancy-heading-bg: #5c4033; /* Darker brown for fancy heading */
+      --fancy-heading-text: #f5e6c3; /* Light beige for fancy heading text */
     }
     * {
       box-sizing: border-box;
@@ -33,7 +33,7 @@
       gap: 16px;
       padding: 18px;
       height: 100vh;
-      background: linear-gradient(to bottom, rgba(26, 26, 26, 0.8), rgba(26, 26, 26, 1)); /* Gray wood-like gradient */
+      background: linear-gradient(to bottom, rgba(60, 47, 47, 0.8), rgba(60, 47, 47, 1)); /* Wood-like gradient */
       flex-direction: column;
     }
     .fancy-heading {
@@ -49,7 +49,6 @@
       text-align: center;
       box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
       position: relative;
-      /* Pseudo-elements for decorative flourishes */
     }
     .fancy-heading::before,
     .fancy-heading::after {
@@ -132,12 +131,12 @@
       box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
     }
     .btn.secondary {
-      background: #666666;
-      color: #e0e0e0;
+      background: #6b4e31;
+      color: #f5e6c3;
     }
     .btn.danger {
-      background: #333333;
-      color: #cccccc;
+      background: #4a3726;
+      color: #f5e6c3;
     }
     .stack {
       display: flex;
@@ -152,7 +151,7 @@
     }
     input, textarea {
       width: 100%;
-      background: #f0f0f0;
+      background: #f5e6c3;
       color: var(--text);
       border: 2px solid var(--border);
       border-radius: 8px;
@@ -162,7 +161,7 @@
     input:focus, textarea:focus {
       border-color: var(--acc);
       outline: none;
-      box-shadow: 0 0 5px rgba(136, 136, 136, 0.5);
+      box-shadow: 0 0 5px rgba(139, 90, 43, 0.5);
     }
     textarea {
       min-height: 100px;
@@ -174,7 +173,7 @@
       gap: 12px;
     }
     .card {
-      background: #f0f0f0;
+      background: #f5e6c3;
       border: 2px double var(--border);
       border-radius: 12px;
       padding: 12px;
@@ -247,12 +246,12 @@
       margin-top: 15px;
     }
     a.link {
-      color: #888888;
+      color: #8b5a2b;
       text-decoration: underline;
       transition: color 0.2s ease;
     }
     a.link:hover {
-      color: #aaaaaa;
+      color: #a86d3b;
     }
     .topbar {
       display: flex;
@@ -275,7 +274,7 @@
       position: relative;
     }
     .img-placeholder {
-      background: #f0f0f0;
+      background: #f5e6c3;
       border: 2px dashed var(--border);
       border-radius: 6px;
       padding: 20px;
@@ -389,7 +388,7 @@
       transition: background 0.2s ease;
     }
     .close-expanded:hover {
-      background: #333;
+      background: #3c2f2f;
     }
   </style>
 </head>
