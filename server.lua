@@ -43,10 +43,10 @@ local function isAllowedImageUrl(url)
     return false
 end
 
--- Function to clean up expired notices
+
 local function cleanupExpiredNotices()
     if Config.NoticeExpiryDays <= 0 then
-        return -- Expiry disabled if set to 0 or negative
+        return 
     end
     
     local expiryDate = os.date('%Y-%m-%d %H:%M:%S', os.time() - (Config.NoticeExpiryDays * 24 * 60 * 60))
@@ -64,16 +64,16 @@ local function cleanupExpiredNotices()
     end)
 end
 
--- Run cleanup on resource start
+
 CreateThread(function()
-    Wait(5000) -- Wait 5 seconds after resource start
+    Wait(5000) 
     cleanupExpiredNotices()
 end)
 
--- Run cleanup every hour
+
 CreateThread(function()
     while true do
-        Wait(3600000) -- Wait 1 hour (3600000 milliseconds)
+        Wait(3600000) 
         cleanupExpiredNotices()
     end
 end)
@@ -104,9 +104,9 @@ local function SendToDiscord(name, message, url)
         Config.WebhookURL,
         function(err, text, headers)
             if err ~= 200 then
-                -- Error handling
+                
             else
-                -- Success
+              
             end
         end,
         'POST',
@@ -129,10 +129,10 @@ AddEventHandler("rsg:noticeBoard:openMenu", function()
     end
     local playerCitizenId = Player.PlayerData.citizenid
     
-    -- Clean up expired notices before fetching
+    
     cleanupExpiredNotices()
     
-    -- Modified query to only fetch non-expired notices
+   
     local selectQuery
     if Config.NoticeExpiryDays > 0 then
         local expiryDate = os.date('%Y-%m-%d %H:%M:%S', os.time() - (Config.NoticeExpiryDays * 24 * 60 * 60))
@@ -155,7 +155,7 @@ AddEventHandler("rsg:noticeBoard:openMenu", function()
             processNoticeResults(src, results, playerCitizenId)
         end)
     else
-        -- No expiry, fetch all notices
+       
         selectQuery = [[
             SELECT 
                 n.id, n.title, n.description, n.url, n.citizenid,
@@ -176,7 +176,7 @@ AddEventHandler("rsg:noticeBoard:openMenu", function()
     end
 end)
 
--- Helper function to process notice results
+
 function processNoticeResults(src, results, playerCitizenId)
     local notices = {}
     
@@ -208,22 +208,6 @@ function processNoticeResults(src, results, playerCitizenId)
     TriggerClientEvent("rsg:noticeBoard:openMenu", src, notices)
 end
 
--- Add a command for admins to manually clean up expired notices
-RegisterCommand("cleanupnotices", function(source, args, rawCommand)
-    local src = source
-    if src == 0 then -- Console command
-        cleanupExpiredNotices()
-        print("[NoticeBoard] Manual cleanup triggered from console")
-    else
-        local Player = RSGCore.Functions.GetPlayer(src)
-        if Player and RSGCore.Functions.HasPermission(src, "admin") then
-            cleanupExpiredNotices()
-            TriggerClientEvent('ox_lib:notify', src, { title = 'Notice Board', description = 'Expired notices cleanup triggered', type = 'success' })
-        else
-            TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'You do not have permission to use this command', type = 'error' })
-        end
-    end
-end, false)
 
 RegisterNetEvent("rsg:noticeBoard:handleMenuSelection")
 AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
