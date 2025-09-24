@@ -1,7 +1,7 @@
 Config = {}
 Config.DatabaseName = "notices"
 Config.MaxNoticesPerPlayer = 3
-Config.NoticeExpiryDays = 7 --- dont use 
+Config.NoticeExpiryDays = 7 --- 0 IS DISABLED
 Config.WebhookURL = "webhook here"
 Config.noticeboardLocations = {
     { coords = vector3(-767.25, -1260.67, 43.53), radius = 1.5 }, -- blackwater
