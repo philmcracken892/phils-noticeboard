@@ -26,11 +26,9 @@ local function isAllowedImageUrl(url)
     
     local imageExtensions = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
     
-   
     if url:find("cdn.discordapp.com", 1, true) or url:find("media.discordapp.net", 1, true) then
         return true
     end
-    
     
     for _, domain in ipairs(Config.AllowedImageDomains) do
         if url:find(domain, 1, true) then
@@ -45,9 +43,43 @@ local function isAllowedImageUrl(url)
     return false
 end
 
+-- Function to clean up expired notices
+local function cleanupExpiredNotices()
+    if Config.NoticeExpiryDays <= 0 then
+        return -- Expiry disabled if set to 0 or negative
+    end
+    
+    local expiryDate = os.date('%Y-%m-%d %H:%M:%S', os.time() - (Config.NoticeExpiryDays * 24 * 60 * 60))
+    local deleteExpiredQuery = 'DELETE FROM ' .. Config.DatabaseName .. ' WHERE created_at < ?'
+    
+    exports.oxmysql:execute(deleteExpiredQuery, { expiryDate }, function(result, err)
+        if err then
+            print("[NoticeBoard] Error cleaning up expired notices: " .. tostring(err))
+        else
+            local deletedCount = (result and result.affectedRows) or 0
+            if deletedCount > 0 then
+                print("[NoticeBoard] Cleaned up " .. deletedCount .. " expired notices older than " .. Config.NoticeExpiryDays .. " days")
+            end
+        end
+    end)
+end
+
+-- Run cleanup on resource start
+CreateThread(function()
+    Wait(5000) -- Wait 5 seconds after resource start
+    cleanupExpiredNotices()
+end)
+
+-- Run cleanup every hour
+CreateThread(function()
+    while true do
+        Wait(3600000) -- Wait 1 hour (3600000 milliseconds)
+        cleanupExpiredNotices()
+    end
+end)
+
 local function SendToDiscord(name, message, url)
     if not Config.WebhookURL or Config.WebhookURL == "YOUR_DISCORD_WEBHOOK_URL_HERE" then
-      
         return
     end
     
@@ -68,14 +100,13 @@ local function SendToDiscord(name, message, url)
         }
     end
     
-   
     PerformHttpRequest(
         Config.WebhookURL,
         function(err, text, headers)
             if err ~= 200 then
-                
+                -- Error handling
             else
-                
+                -- Success
             end
         end,
         'POST',
@@ -93,15 +124,39 @@ AddEventHandler("rsg:noticeBoard:openMenu", function()
     local src = source
     local Player = RSGCore.Functions.GetPlayer(src)
     if not Player then 
-       
         TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Player not found', type = 'error' })
         return 
     end
     local playerCitizenId = Player.PlayerData.citizenid
     
-
+    -- Clean up expired notices before fetching
+    cleanupExpiredNotices()
     
-        local selectQuery = [[
+    -- Modified query to only fetch non-expired notices
+    local selectQuery
+    if Config.NoticeExpiryDays > 0 then
+        local expiryDate = os.date('%Y-%m-%d %H:%M:%S', os.time() - (Config.NoticeExpiryDays * 24 * 60 * 60))
+        selectQuery = [[
+            SELECT 
+                n.id, n.title, n.description, n.url, n.citizenid,
+                DATE_FORMAT(n.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+                (SELECT charinfo FROM players WHERE citizenid = n.citizenid) AS author_info
+            FROM ]] .. Config.DatabaseName .. [[ n
+            WHERE n.created_at >= ?
+            ORDER BY n.created_at DESC
+        ]]
+        
+        exports.oxmysql:execute(selectQuery, { expiryDate }, function(results, err)
+            if err then
+                TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to fetch notices: ' .. tostring(err), type = 'error' })
+                return
+            end
+            
+            processNoticeResults(src, results, playerCitizenId)
+        end)
+    else
+        -- No expiry, fetch all notices
+        selectQuery = [[
             SELECT 
                 n.id, n.title, n.description, n.url, n.citizenid,
                 DATE_FORMAT(n.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
@@ -112,44 +167,63 @@ AddEventHandler("rsg:noticeBoard:openMenu", function()
         
         exports.oxmysql:execute(selectQuery, {}, function(results, err)
             if err then
-                
                 TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to fetch notices: ' .. tostring(err), type = 'error' })
                 return
             end
-
-            local notices = {}
-           
-            if #results == 0 then
-                TriggerClientEvent('ox_lib:notify', src, { title = 'Noticeboard', description = 'No notices available. Create a new one!', type = 'inform' })
-            end
-
-            for i, notice in ipairs(results or {}) do
-                local authorName = "Unknown"
-                if notice.author_info then
-                    local info = json.decode(notice.author_info)
-                    if info then authorName = (info.firstname or "?") .. " " .. (info.lastname or "") end
-                end
-                
-                local isImage = isAllowedImageUrl(notice.url)
-               
-                
-                notices[#notices+1] = {
-                    id = notice.id,
-                    title = notice.title,
-                    description = notice.description,
-                    url = notice.url,
-                    isImage = isImage, 
-                    authorName = authorName,
-                    created_at = notice.created_at,
-                    isCreator = notice.citizenid == playerCitizenId
-                }
-            end
-
-            TriggerClientEvent("rsg:noticeBoard:openMenu", src, notices)
-           
+            
+            processNoticeResults(src, results, playerCitizenId)
         end)
-    
+    end
 end)
+
+-- Helper function to process notice results
+function processNoticeResults(src, results, playerCitizenId)
+    local notices = {}
+    
+    if #results == 0 then
+        TriggerClientEvent('ox_lib:notify', src, { title = 'Noticeboard', description = 'No notices available. Create a new one!', type = 'inform' })
+    end
+
+    for i, notice in ipairs(results or {}) do
+        local authorName = "Unknown"
+        if notice.author_info then
+            local info = json.decode(notice.author_info)
+            if info then authorName = (info.firstname or "?") .. " " .. (info.lastname or "") end
+        end
+        
+        local isImage = isAllowedImageUrl(notice.url)
+        
+        notices[#notices+1] = {
+            id = notice.id,
+            title = notice.title,
+            description = notice.description,
+            url = notice.url,
+            isImage = isImage, 
+            authorName = authorName,
+            created_at = notice.created_at,
+            isCreator = notice.citizenid == playerCitizenId
+        }
+    end
+
+    TriggerClientEvent("rsg:noticeBoard:openMenu", src, notices)
+end
+
+-- Add a command for admins to manually clean up expired notices
+RegisterCommand("cleanupnotices", function(source, args, rawCommand)
+    local src = source
+    if src == 0 then -- Console command
+        cleanupExpiredNotices()
+        print("[NoticeBoard] Manual cleanup triggered from console")
+    else
+        local Player = RSGCore.Functions.GetPlayer(src)
+        if Player and RSGCore.Functions.HasPermission(src, "admin") then
+            cleanupExpiredNotices()
+            TriggerClientEvent('ox_lib:notify', src, { title = 'Notice Board', description = 'Expired notices cleanup triggered', type = 'success' })
+        else
+            TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'You do not have permission to use this command', type = 'error' })
+        end
+    end
+end, false)
 
 RegisterNetEvent("rsg:noticeBoard:handleMenuSelection")
 AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
@@ -168,13 +242,11 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
         end
 
         local cleanUrl = sanitizeUrl(data.url)
-       
 
         exports.oxmysql:execute('SELECT COUNT(*) as count FROM ' .. Config.DatabaseName .. ' WHERE citizenid = ?', {
             Player.PlayerData.citizenid
         }, function(result, err)
             if err then
-                
                 TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to check notice count', type = 'error' })
                 return
             end
@@ -195,7 +267,6 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
                 os.date('%Y-%m-%d %H:%M:%S')
             }, function(result2, err)
                 if err then
-                   
                     TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to post notice: ' .. tostring(err), type = 'error' })
                     return
                 end
@@ -228,7 +299,6 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
         end
 
         local cleanUrl = sanitizeUrl(data.url)
-        
 
         exports.oxmysql:single('SELECT citizenid FROM ' .. Config.DatabaseName .. ' WHERE id = ?', { data.id }, function(notice)
             if not notice then
@@ -246,7 +316,6 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
                 data.title, data.description, cleanUrl, data.id
             }, function(result2, err)
                 if err then
-                   
                     TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to update notice: ' .. tostring(err), type = 'error' })
                     return
                 end
@@ -288,7 +357,6 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(selection)
         
         exports.oxmysql:single(selectQuery, { selection.id }, function(notice)
             if not notice then
-                
                 TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Notice not found', type = 'error' })
                 return
             end
@@ -302,7 +370,6 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(selection)
             
             exports.oxmysql:execute(deleteQuery, { selection.id }, function(result2, err)
                 if err then
-                    
                     TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to delete notice: ' .. tostring(err), type = 'error' })
                     return
                 end
@@ -333,13 +400,11 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(selection)
         
         exports.oxmysql:single(countQuery, { Player.PlayerData.citizenid }, function(countResult)
             local noticeCount = (countResult and countResult.count) or 0
-           
             
             local deleteQuery = 'DELETE FROM ' .. Config.DatabaseName .. ' WHERE citizenid = ?'
             
             exports.oxmysql:execute(deleteQuery, { Player.PlayerData.citizenid }, function(result2, err)
                 if err then
-                   
                     TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to delete all notices: ' .. tostring(err), type = 'error' })
                     return
                 end
