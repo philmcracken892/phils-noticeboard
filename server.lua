@@ -1,36 +1,18 @@
 local RSGCore = exports['rsg-core']:GetCoreObject()
 
-local Config = {
-    DatabaseName = "notices",
-    MaxNoticesPerPlayer = 30,
-    NoticeTitleMaxLength = 50,
-    NoticeDescMaxLength = 500,
-    NoticeUrlMaxLength = 255,
-    AllowedImageDomains = { 
-        "cdn.discordapp.com",
-        "media.discordapp.net",
-        "i.imgur.com",
-        "i.redd.it"
-    }
-}
-
 local function wasSuccessful(result)
     return result and ((type(result) == "table" and result.affectedRows and result.affectedRows > 0) or
                       (type(result) == "number" and result > 0))
 end
 
-
 local function sanitizeUrl(url)
     if not url or url == "" then return nil end
     
-    
     url = url:gsub("^%s+", ""):gsub("%s+$", "")
-    
     
     if #url > Config.NoticeUrlMaxLength then 
         return nil 
     end
-    
     
     if not url:match("^https?://[%w-_%.%?%.:/%+=&]+$") then
         return nil
@@ -39,61 +21,134 @@ local function sanitizeUrl(url)
     return url
 end
 
-
 local function isAllowedImageUrl(url)
     if not url then return false end
     
+    local imageExtensions = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
+    
+   
+    if url:find("cdn.discordapp.com", 1, true) or url:find("media.discordapp.net", 1, true) then
+        return true
+    end
+    
+    
     for _, domain in ipairs(Config.AllowedImageDomains) do
         if url:find(domain, 1, true) then
-            return true
+            for _, ext in ipairs(imageExtensions) do
+                if url:lower():find(ext, -#ext, true) then
+                    return true
+                end
+            end
         end
     end
     
     return false
 end
 
+local function SendToDiscord(name, message, url)
+    if not Config.WebhookURL or Config.WebhookURL == "YOUR_DISCORD_WEBHOOK_URL_HERE" then
+      
+        return
+    end
+    
+    local connect = {
+        {
+            ["color"] = 15158332,
+            ["title"] = "**".. name .."**",
+            ["description"] = message,
+            ["footer"] = {
+                ["text"] = "Date : " .. os.date("%Y-%m-%d %X"),
+            },
+        }
+    }
+    
+    if url and isAllowedImageUrl(url) then
+        connect[1]["image"] = {
+            ["url"] = url
+        }
+    end
+    
+   
+    PerformHttpRequest(
+        Config.WebhookURL,
+        function(err, text, headers)
+            if err ~= 200 then
+                
+            else
+                
+            end
+        end,
+        'POST',
+        json.encode({
+            username = "Notice Board",
+            embeds = connect,
+            avatar_url = "https://media.discordapp.net/attachments/1163182151391527053/1317888980876005417/image-removebg-preview_4.png"
+        }),
+        { ['Content-Type'] = 'application/json' }
+    )
+end
 
 RegisterNetEvent("rsg:noticeBoard:openMenu")
 AddEventHandler("rsg:noticeBoard:openMenu", function()
     local src = source
     local Player = RSGCore.Functions.GetPlayer(src)
-    if not Player then return end
+    if not Player then 
+       
+        TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Player not found', type = 'error' })
+        return 
+    end
+    local playerCitizenId = Player.PlayerData.citizenid
+    
 
-    exports.oxmysql:execute([[
-        SELECT 
-            n.id, n.title, n.description, n.url, n.citizenid,
-            DATE_FORMAT(n.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
-            (SELECT charinfo FROM players WHERE citizenid = n.citizenid) AS author_info
-        FROM ]] .. Config.DatabaseName .. [[ n
-        ORDER BY n.created_at DESC
-    ]], {}, function(results)
-        local notices = {}
-        local playerCitizenId = Player.PlayerData.citizenid
-
-        for _, notice in ipairs(results or {}) do
-            local authorName = "Unknown"
-            if notice.author_info then
-                local info = json.decode(notice.author_info)
-                if info then authorName = (info.firstname or "?") .. " " .. (info.lastname or "") end
+    
+        local selectQuery = [[
+            SELECT 
+                n.id, n.title, n.description, n.url, n.citizenid,
+                DATE_FORMAT(n.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+                (SELECT charinfo FROM players WHERE citizenid = n.citizenid) AS author_info
+            FROM ]] .. Config.DatabaseName .. [[ n
+            ORDER BY n.created_at DESC
+        ]]
+        
+        exports.oxmysql:execute(selectQuery, {}, function(results, err)
+            if err then
+                
+                TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to fetch notices: ' .. tostring(err), type = 'error' })
+                return
             end
-            
-           
-            local isImage = isAllowedImageUrl(notice.url)
-            
-            notices[#notices+1] = {
-                id = notice.id,
-                title = notice.title,
-                description = notice.description,
-                url = notice.url,
-                isImage = isImage, 
-                authorName = authorName,
-                created_at = notice.created_at,
-                isCreator = notice.citizenid == playerCitizenId
-            }
-        end
 
-        TriggerClientEvent("rsg:noticeBoard:openMenu", src, notices)
-    end)
+            local notices = {}
+           
+            if #results == 0 then
+                TriggerClientEvent('ox_lib:notify', src, { title = 'Noticeboard', description = 'No notices available. Create a new one!', type = 'inform' })
+            end
+
+            for i, notice in ipairs(results or {}) do
+                local authorName = "Unknown"
+                if notice.author_info then
+                    local info = json.decode(notice.author_info)
+                    if info then authorName = (info.firstname or "?") .. " " .. (info.lastname or "") end
+                end
+                
+                local isImage = isAllowedImageUrl(notice.url)
+               
+                
+                notices[#notices+1] = {
+                    id = notice.id,
+                    title = notice.title,
+                    description = notice.description,
+                    url = notice.url,
+                    isImage = isImage, 
+                    authorName = authorName,
+                    created_at = notice.created_at,
+                    isCreator = notice.citizenid == playerCitizenId
+                }
+            end
+
+            TriggerClientEvent("rsg:noticeBoard:openMenu", src, notices)
+           
+        end)
+    
 end)
 
 RegisterNetEvent("rsg:noticeBoard:handleMenuSelection")
@@ -113,29 +168,56 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
         end
 
         local cleanUrl = sanitizeUrl(data.url)
+       
 
         exports.oxmysql:execute('SELECT COUNT(*) as count FROM ' .. Config.DatabaseName .. ' WHERE citizenid = ?', {
             Player.PlayerData.citizenid
-        }, function(result)
+        }, function(result, err)
+            if err then
+                
+                TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to check notice count', type = 'error' })
+                return
+            end
+
             local noticeCount = (result and result[1] and result[1].count) or 0
             if noticeCount >= Config.MaxNoticesPerPlayer then
                 TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = ('You have reached the maximum number of notices (%d).'):format(Config.MaxNoticesPerPlayer), type = 'error' })
                 return
             end
 
-            exports.oxmysql:insert('INSERT INTO ' .. Config.DatabaseName .. ' (citizenid, title, description, url, created_at) VALUES (?, ?, ?, ?, ?)', {
+            local insertQuery = 'INSERT INTO ' .. Config.DatabaseName .. ' (citizenid, title, description, url, created_at) VALUES (?, ?, ?, ?, ?)'
+           
+            exports.oxmysql:insert(insertQuery, {
                 Player.PlayerData.citizenid,
                 data.title,
                 data.description,
                 cleanUrl,
                 os.date('%Y-%m-%d %H:%M:%S')
-            }, function(result2)
+            }, function(result2, err)
+                if err then
+                   
+                    TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to post notice: ' .. tostring(err), type = 'error' })
+                    return
+                end
+
                 if wasSuccessful(result2) then
                     TriggerClientEvent('ox_lib:notify', src, { title = 'Success', description = 'Notice posted', type = 'success' })
+                    
+                    local playerName = Player.PlayerData.charinfo.firstname .. " " .. Player.PlayerData.charinfo.lastname
+                    local discordMessage = string.format(
+                        "**New Notice Posted!**\n\n" ..
+                        "**Player:** %s\n" ..
+                        "**Title:** %s\n" ..
+                        "**Description:** %s",
+                        playerName,
+                        data.title,
+                        data.description
+                    )
+                    SendToDiscord("Notice Board - New Post", discordMessage, cleanUrl)
                 else
                     TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to post notice', type = 'error' })
                 end
-                TriggerClientEvent("rsg:noticeBoard:refresh", src) -- ask client to re-open menu
+                TriggerClientEvent("rsg:noticeBoard:refresh", src)
             end)
         end)
 
@@ -146,6 +228,7 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
         end
 
         local cleanUrl = sanitizeUrl(data.url)
+        
 
         exports.oxmysql:single('SELECT citizenid FROM ' .. Config.DatabaseName .. ' WHERE id = ?', { data.id }, function(notice)
             if not notice then
@@ -157,11 +240,31 @@ AddEventHandler("rsg:noticeBoard:handleMenuSelection", function(data)
                 return
             end
 
-            exports.oxmysql:execute('UPDATE ' .. Config.DatabaseName .. ' SET title = ?, description = ?, url = ? WHERE id = ?', {
+            local updateQuery = 'UPDATE ' .. Config.DatabaseName .. ' SET title = ?, description = ?, url = ? WHERE id = ?'
+           
+            exports.oxmysql:execute(updateQuery, {
                 data.title, data.description, cleanUrl, data.id
-            }, function(result2)
+            }, function(result2, err)
+                if err then
+                   
+                    TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to update notice: ' .. tostring(err), type = 'error' })
+                    return
+                end
+
                 if wasSuccessful(result2) then
                     TriggerClientEvent('ox_lib:notify', src, { title = 'Success', description = 'Notice updated', type = 'success' })
+                    
+                    local playerName = Player.PlayerData.charinfo.firstname .. " " .. Player.PlayerData.charinfo.lastname
+                    local discordMessage = string.format(
+                        "**Notice Updated!**\n\n" ..
+                        "**Player:** %s\n" ..
+                        "**Title:** %s\n" ..
+                        "**Description:** %s",
+                        playerName,
+                        data.title,
+                        data.description
+                    )
+                    SendToDiscord("Notice Board - Notice Updated", discordMessage, cleanUrl)
                 else
                     TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to update notice', type = 'error' })
                 end
@@ -181,19 +284,43 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(selection)
     end
 
     if selection.action == "remove" then
-        exports.oxmysql:single('SELECT citizenid FROM ' .. Config.DatabaseName .. ' WHERE id = ?', { selection.id }, function(notice)
+        local selectQuery = 'SELECT citizenid, title, description, url FROM ' .. Config.DatabaseName .. ' WHERE id = ?'
+        
+        exports.oxmysql:single(selectQuery, { selection.id }, function(notice)
             if not notice then
+                
                 TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Notice not found', type = 'error' })
                 return
             end
+            
             if notice.citizenid ~= Player.PlayerData.citizenid then
                 TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'You can only delete your own notices', type = 'error' })
                 return
             end
 
-            exports.oxmysql:execute('DELETE FROM ' .. Config.DatabaseName .. ' WHERE id = ?', { selection.id }, function(result2)
+            local deleteQuery = 'DELETE FROM ' .. Config.DatabaseName .. ' WHERE id = ?'
+            
+            exports.oxmysql:execute(deleteQuery, { selection.id }, function(result2, err)
+                if err then
+                    
+                    TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to delete notice: ' .. tostring(err), type = 'error' })
+                    return
+                end
+
                 if wasSuccessful(result2) then
                     TriggerClientEvent('ox_lib:notify', src, { title = 'Success', description = 'Notice deleted', type = 'success' })
+                    
+                    local playerName = Player.PlayerData.charinfo.firstname .. " " .. Player.PlayerData.charinfo.lastname
+                    local discordMessage = string.format(
+                        "**Notice Deleted!**\n\n" ..
+                        "**Player:** %s\n" ..
+                        "**Deleted Title:** %s\n" ..
+                        "**Deleted Description:** %s",
+                        playerName,
+                        notice.title or "Unknown",
+                        notice.description or "Unknown"
+                    )
+                    SendToDiscord("Notice Board - Notice Deleted", discordMessage, notice.url)
                 else
                     TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to delete notice', type = 'error' })
                 end
@@ -202,13 +329,40 @@ AddEventHandler("rsg:noticeBoard:handleNoticeAction", function(selection)
         end)
 
     elseif selection.action == "removeAll" then
-        exports.oxmysql:execute('DELETE FROM ' .. Config.DatabaseName .. ' WHERE citizenid = ?', { Player.PlayerData.citizenid }, function(result2)
-            if wasSuccessful(result2) then
-                TriggerClientEvent('ox_lib:notify', src, { title = 'Success', description = 'All notices deleted', type = 'success' })
-            else
-                TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to delete all', type = 'error' })
-            end
-            TriggerClientEvent("rsg:noticeBoard:refresh", src)
+        local countQuery = 'SELECT COUNT(*) as count FROM ' .. Config.DatabaseName .. ' WHERE citizenid = ?'
+        
+        exports.oxmysql:single(countQuery, { Player.PlayerData.citizenid }, function(countResult)
+            local noticeCount = (countResult and countResult.count) or 0
+           
+            
+            local deleteQuery = 'DELETE FROM ' .. Config.DatabaseName .. ' WHERE citizenid = ?'
+            
+            exports.oxmysql:execute(deleteQuery, { Player.PlayerData.citizenid }, function(result2, err)
+                if err then
+                   
+                    TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to delete all notices: ' .. tostring(err), type = 'error' })
+                    return
+                end
+
+                if wasSuccessful(result2) then
+                    TriggerClientEvent('ox_lib:notify', src, { title = 'Success', description = 'All notices deleted', type = 'success' })
+                    
+                    if noticeCount > 0 then
+                        local playerName = Player.PlayerData.charinfo.firstname .. " " .. Player.PlayerData.charinfo.lastname
+                        local discordMessage = string.format(
+                            "**All Notices Deleted!**\n\n" ..
+                            "**Player:** %s\n" ..
+                            "**Deleted Count:** %d notices",
+                            playerName,
+                            noticeCount
+                        )
+                        SendToDiscord("Notice Board - All Notices Deleted", discordMessage, nil)
+                    end
+                else
+                    TriggerClientEvent('ox_lib:notify', src, { title = 'Error', description = 'Failed to delete all', type = 'error' })
+                end
+                TriggerClientEvent("rsg:noticeBoard:refresh", src)
+            end)
         end)
     end
 end)
