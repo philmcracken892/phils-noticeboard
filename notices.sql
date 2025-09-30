@@ -1,11 +1,11 @@
+CREATE TABLE IF NOT EXISTS noticeboard (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    identifier VARCHAR(50) NOT NULL,
+    firstname VARCHAR(50) NOT NULL,
+    lastname VARCHAR(50) NOT NULL,
+    title VARCHAR(50) NOT NULL,
+    message VARCHAR(500) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-CREATE TABLE IF NOT EXISTS `notices` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `citizenid` varchar(64) NOT NULL,
-  `title` varchar(255) NOT NULL,
-  `description` text NOT NULL,
-  `url` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
