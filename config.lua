@@ -1,5 +1,5 @@
 Config = {}
-Config.DatabaseName = "notices"
+Config.DatabaseName = "noticeboard"
 Config.MaxNoticesPerPlayer = 3
 Config.NoticeExpiryDays = 7 --- 0 IS DISABLED
 Config.WebhookURL = "webhook here"
